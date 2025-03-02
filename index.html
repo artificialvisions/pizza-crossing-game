@@ -59,8 +59,8 @@
         }
         
         .mobileBtn {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             background-color: rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             display: flex;
@@ -69,23 +69,54 @@
             font-size: 24px;
             color: white;
             user-select: none;
+            position: relative;
+        }
+        
+        /* Preveniamo la selezione del testo */
+        .mobileBtn {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        /* Stili per i triangoli delle direzioni */
+        #leftBtn::after, #rightBtn::after, #upBtn::after, #downBtn::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        #leftBtn::after {
+            border-width: 15px 26px 15px 0;
+            border-color: transparent white transparent transparent;
+            left: 18px;
+        }
+        
+        #rightBtn::after {
+            border-width: 15px 0 15px 26px;
+            border-color: transparent transparent transparent white;
+            right: 18px;
+        }
+        
+        #upBtn::after {
+            border-width: 0 15px 26px 15px;
+            border-color: transparent transparent white transparent;
+            top: 18px;
+        }
+        
+        #downBtn::after {
+            border-width: 26px 15px 0 15px;
+            border-color: white transparent transparent transparent;
+            bottom: 18px;
         }
         
         #musicToggle {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 40px;
-            height: 40px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            z-index: 30;
-            font-size: 24px;
-            display: none; /* Nascosto */
+            display: none; /* Nascondiamo completamente il pulsante della musica */
         }
         
         #startScreen, #gameOverScreen {
@@ -208,10 +239,10 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="mobileControls">
-            <div class="mobileBtn" id="leftBtn">←</div>
-            <div class="mobileBtn" id="upBtn">↑</div>
-            <div class="mobileBtn" id="downBtn">↓</div>
-            <div class="mobileBtn" id="rightBtn">→</div>
+            <div class="mobileBtn" id="leftBtn"></div>
+            <div class="mobileBtn" id="upBtn"></div>
+            <div class="mobileBtn" id="downBtn"></div>
+            <div class="mobileBtn" id="rightBtn"></div>
         </div>
         
         <div id="startScreen">
@@ -232,6 +263,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("Documento caricato, inizializzazione gioco...");
+            
             // Variabili di gioco
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
@@ -288,10 +321,10 @@
             ArrowRight: false
         };
         
-        // Impostazioni iniziali
+        // Impostazioni iniziali - nessuna referenza all'audio
         function resetGame() {
             level = 1;
-            lives = 5; // Aumentiamo le vite da 3 a 5 per rendere il gioco più facile
+            lives = 5;
             levelDisplay.textContent = level;
             livesDisplay.textContent = lives;
             playerX = canvas.width / 2 - PLAYER_SIZE / 2;
@@ -424,11 +457,64 @@
                 
                 // Verifica vittoria livello
                 if (playerY <= SIDEWALK_HEIGHT) {
-                    level++;
-                    levelDisplay.textContent = level;
-                    playerX = canvas.width / 2 - PLAYER_SIZE / 2;
-                    playerY = canvas.height - SIDEWALK_HEIGHT - PLAYER_SIZE / 2;
-                    generateCars();
+                    // Reset degli input per evitare movimento indesiderato al livello successivo
+                    keys.ArrowUp = false;
+                    keys.ArrowDown = false;
+                    keys.ArrowLeft = false;
+                    keys.ArrowRight = false;
+                    
+                    // Piccola pausa prima del prossimo livello
+                    gameActive = false;
+                    
+                    // Variabile per effetto lampeggiante
+                    let flash = true;
+                    const flashInterval = setInterval(() => {
+                        flash = !flash;
+                    }, 300);
+                    
+                    // Funzione per disegnare il messaggio di livello superato
+                    function drawLevelClearedMessage() {
+                        // Overlay semitrasparente
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Prima riga - titolo principale
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.font = 'bold 36px "Courier New", monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`LEVEL ${level} CLEARED!`, canvas.width/2, canvas.height/2 - 50);
+                        
+                        // Seconda riga - congratulazioni pizza
+                        ctx.fillStyle = '#f1c40f';
+                        ctx.font = 'bold 24px "Courier New", monospace';
+                        ctx.fillText(`PIZZA SAFELY DELIVERED!`, canvas.width/2, canvas.height/2);
+                        
+                        // Terza riga - prossimo livello (lampeggiante)
+                        if (flash) {
+                            ctx.fillStyle = '#2ecc71';
+                            ctx.font = 'bold 20px "Courier New", monospace';
+                            ctx.fillText(`GET READY FOR NEXT ORDER...`, canvas.width/2, canvas.height/2 + 50);
+                        }
+                        
+                        // Se è ancora attivo, continua l'animazione
+                        if (gameActive === false) {
+                            requestAnimationFrame(drawLevelClearedMessage);
+                        }
+                    }
+                    
+                    // Avvia l'animazione
+                    drawLevelClearedMessage();
+                    
+                    // Passa al prossimo livello dopo una breve pausa
+                    setTimeout(() => {
+                        clearInterval(flashInterval);
+                        level++;
+                        levelDisplay.textContent = level;
+                        playerX = canvas.width / 2 - PLAYER_SIZE / 2;
+                        playerY = canvas.height - SIDEWALK_HEIGHT - PLAYER_SIZE / 2;
+                        generateCars();
+                        gameActive = true;
+                    }, 3000); // Aumentiamo il tempo a 3 secondi per leggere il messaggio
                 }
             } else {
                 // Aggiornamento animazione incidente
@@ -672,12 +758,16 @@
             startScreen.style.display = 'none';
             resetGame();
             gameActive = true;
+            
+            // NON avviamo più la musica automaticamente
         });
         
         restartBtn.addEventListener('click', () => {
             gameOverScreen.style.display = 'none';
             resetGame();
             gameActive = true;
+            
+            // NON avviamo più la musica automaticamente
         });
         
         // Inizializzazione
